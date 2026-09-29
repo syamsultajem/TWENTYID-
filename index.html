@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TWENTYID Work Manager</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f4f6f8;color:#222}
+header{background:#111;color:#fff;padding:16px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:5}
+header h2{margin:0;font-size:20px}button{border:0;border-radius:8px;padding:10px 14px;cursor:pointer}
+.btn{background:#111;color:#fff}.light{background:#fff;border:1px solid #ddd}
+nav{display:flex;gap:8px;padding:10px;background:#fff;overflow:auto;position:sticky;top:58px;z-index:4}
+nav button{white-space:nowrap;background:#eee}.active{background:#111!important;color:#fff}
+main{max-width:1000px;margin:auto;padding:16px}.page{display:none}.page.active-page{display:block}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.card{background:#fff;padding:18px;border-radius:12px;box-shadow:0 2px 8px #0000000d}.num{font-size:28px;font-weight:bold;margin-top:8px}
+.panel{background:#fff;padding:16px;border-radius:12px;margin-top:16px}.row{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+input,select{width:100%;padding:11px;border:1px solid #ddd;border-radius:8px;margin:5px 0 12px}
+.item{padding:12px;border:1px solid #eee;border-radius:9px;margin:8px 0;display:flex;justify-content:space-between;gap:10px;align-items:center}
+.small{font-size:13px;color:#666}.done{text-decoration:line-through;color:#888}
+@media(max-width:650px){.cards{grid-template-columns:repeat(2,1fr)}.row{grid-template-columns:1fr}.item{flex-direction:column;align-items:flex-start}header h2{font-size:17px}}
+</style>
+</head>
+<body>
+<header><h2>TWENTYID Work Manager</h2><button class="light" onclick="backup()">Backup</button></header>
+<nav>
+<button class="active" onclick="show('dashboard',this)">Dashboard</button>
+<button onclick="show('karyawan',this)">Karyawan</button>
+<button onclick="show('absensi',this)">Absensi</button>
+<button onclick="show('jadwal',this)">Jadwal</button>
+<button onclick="show('pekerjaan',this)">Pekerjaan</button>
+</nav>
+<main>
+<section id="dashboard" class="page active-page">
+<h3>Dashboard</h3>
+<div class="cards">
+<div class="card">Karyawan<div class="num" id="cKaryawan">0</div></div>
+<div class="card">Absensi Hari Ini<div class="num" id="cAbsensi">0</div></div>
+<div class="card">Pekerjaan Aktif<div class="num" id="cAktif">0</div></div>
+<div class="card">Selesai<div class="num" id="cSelesai">0</div></div>
+</div>
+<div class="panel"><b>Selamat datang di TWENTYID Work Manager</b><p class="small">Kelola karyawan, absensi, jadwal, dan pekerjaan dari HP.</p></div>
+</section>
+
+<section id="karyawan" class="page">
+<h3>Data Karyawan</h3>
+<div class="panel"><div class="row"><div><label>Nama</label><input id="nama" placeholder="Nama karyawan"></div><div><label>Jabatan</label><input id="jabatan" placeholder="Contoh: Operator"></div></div><button class="btn" onclick="addEmployee()">+ Tambah Karyawan</button></div>
+<div class="panel" id="listKaryawan"></div>
+</section>
+
+<section id="absensi" class="page">
+<h3>Absensi</h3>
+<div class="panel"><label>Pilih Karyawan</label><select id="absenNama"></select><button class="btn" onclick="checkIn()">Check In</button> <button class="light" onclick="checkOut()">Check Out</button></div>
+<div class="panel" id="listAbsensi"></div>
+</section>
+
+<section id="jadwal" class="page">
+<h3>Jadwal Kerja</h3>
+<div class="panel"><div class="row"><div><label>Jam Masuk</label><input type="time" id="jamMasuk"></div><div><label>Jam Pulang</label><input type="time" id="jamPulang"></div><div><label>Istirahat Mulai</label><input type="time" id="istMulai"></div><div><label>Istirahat Selesai</label><input type="time" id="istSelesai"></div></div><button class="btn" onclick="saveSchedule()">Simpan Jadwal</button><p id="jadwalInfo" class="small"></p></div>
+</section>
+
+<section id="pekerjaan" class="page">
+<h3>Pekerjaan</h3>
+<div class="panel"><div class="row"><div><label>Pekerjaan</label><input id="task" placeholder="Contoh: Sablon pesanan Naya"></div><div><label>Deadline</label><input type="date" id="deadline"></div><div><label>Prioritas</label><select id="priority"><option>Normal</option><option>Tinggi</option><option>Urgent</option></select></div><div><label>PIC</label><select id="pic"></select></div></div><button class="btn" onclick="addTask()">+ Tambah Pekerjaan</button></div>
+<div class="panel" id="listTask"></div>
+</section>
+</main>
+
+<script>
+const KEY='TWENTYID_WORK_MANAGER';
+let data=JSON.parse(localStorage.getItem(KEY)||'null')||{
+karyawan:[{nama:'Admin / Owner',jabatan:'Owner'}],absensi:[],tasks:[],
+jadwal:{masuk:'08:00',pulang:'17:00',ist1:'12:00',ist2:'13:00'}
+};
+function save(){localStorage.setItem(KEY,JSON.stringify(data));render()}
+function show(id,btn){document.querySelectorAll('.page').forEach(x=>x.classList.remove('active-page'));document.getElementById(id).classList.add('active-page');document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));btn.classList.add('active');render()}
+function today(){return new Date().toISOString().slice(0,10)}
+function addEmployee(){let n=document.getElementById('nama').value.trim(),j=document.getElementById('jabatan').value.trim()||'Karyawan';if(!n)return alert('Isi nama karyawan');data.karyawan.push({nama:n,jabatan:j});document.getElementById('nama').value='';document.getElementById('jabatan').value='';save()}
+function delEmployee(i){if(confirm('Hapus karyawan ini?')){data.karyawan.splice(i,1);save()}}
+function checkIn(){let n=document.getElementById('absenNama').value;if(!n)return;let d=new Date(),t=d.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});data.absensi.push({tanggal:today(),nama:n,masuk:t,pulang:''});save();alert('Check in: '+n)}
+function checkOut(){let n=document.getElementById('absenNama').value;let a=[...data.absensi].reverse().find(x=>x.tanggal===today()&&x.nama===n&&!x.pulang);if(!a)return alert('Belum ada check in hari ini');let d=new Date();a.pulang=d.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});save()}
+function saveSchedule(){data.jadwal={masuk:jamMasuk.value,pulang:jamPulang.value,ist1:istMulai.value,ist2:istSelesai.value};save();alert('Jadwal tersimpan')}
+function addTask(){let t=task.value.trim();if(!t)return alert('Isi nama pekerjaan');data.tasks.push({text:t,deadline:deadline.value,priority:priority.value,pic:pic.value,done:false});task.value='';deadline.value='';save()}
+function toggleTask(i){data.tasks[i].done=!data.tasks[i].done;save()}
+function delTask(i){data.tasks.splice(i,1);save()}
+function backup(){let blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='TWENTYID-backup-'+today()+'.json';a.click()}
+function render(){
+cKaryawan.textContent=data.karyawan.length;cAbsensi.textContent=data.absensi.filter(x=>x.tanggal===today()).length;cAktif.textContent=data.tasks.filter(x=>!x.done).length;cSelesai.textContent=data.tasks.filter(x=>x.done).length;
+listKaryawan.innerHTML=data.karyawan.map((x,i)=>`<div class="item"><div><b>${x.nama}</b><div class="small">${x.jabatan}</div></div><button onclick="delEmployee(${i})">Hapus</button></div>`).join('');
+absenNama.innerHTML=data.karyawan.map(x=>`<option>${x.nama}</option>`).join('');
+pic.innerHTML='<option>Belum ditentukan</option>'+data.karyawan.map(x=>`<option>${x.nama}</option>`).join('');
+listAbsensi.innerHTML=data.absensi.slice().reverse().map(x=>`<div class="item"><div><b>${x.nama}</b><div class="small">${x.tanggal} • Masuk ${x.masuk} • Pulang ${x.pulang||'-'}</div></div></div>`).join('')||'<p class="small">Belum ada absensi.</p>';
+jamMasuk.value=data.jadwal.masuk;jamPulang.value=data.jadwal.pulang;istMulai.value=data.jadwal.ist1;istSelesai.value=data.jadwal.ist2;jadwalInfo.textContent=`Jam kerja ${data.jadwal.masuk}–${data.jadwal.pulang}, istirahat ${data.jadwal.ist1}–${data.jadwal.ist2}`;
+listTask.innerHTML=data.tasks.map((x,i)=>`<div class="item"><div class="${x.done?'done':''}"><b>${x.text}</b><div class="small">Deadline: ${x.deadline||'-'} • ${x.priority} • PIC: ${x.pic||'-'}</div></div><div><button onclick="toggleTask(${i})">${x.done?'Buka':'Selesai'}</button><button onclick="delTask(${i})">Hapus</button></div></div>`).join('')||'<p class="small">Belum ada pekerjaan.</p>';
+}
+render();
+</script>
+</body>
+</html>
